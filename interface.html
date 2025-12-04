@@ -697,6 +697,13 @@ function launchMode(mode) { // ou lancerMode
         
         switchTab(mode);
     }
+
+        // Ouvrir Sidebar
+        document.getElementById('sidebar').classList.add('open');
+        document.getElementById('sb-title').innerText = app.regionName;
+        
+        switchTab(mode);
+    }
     function switchTab(tab) {
         ['climat','agri','stats'].forEach(t => {
             document.getElementById(`btn-${t}`).className = t===tab ? 'tab-btn active' : 'tab-btn';
