@@ -334,6 +334,60 @@
             .ring-svg { width: 140px !important; height: 140px !important; }
             .ring-temp { font-size: 2rem !important; }
         }
+        /* ==================================================================
+           PATCH LANDING PAGE MOBILE (ANTI-BLOCAGE)
+           ================================================================== */
+        @media (max-width: 768px) {
+            
+            /* 1. Rendre l'écran d'accueil défilable si trop petit */
+            #landing-screen {
+                padding: 10px;
+                overflow-y: auto; /* Permet de scroller si le bouton est caché */
+                display: flex;
+                align-items: center; /* Centre verticalement */
+            }
+
+            /* 2. Réduire la boîte de contenu */
+            .landing-content {
+                padding: 20px !important;
+                width: 95% !important;
+                max-width: none !important;
+                margin-top: 0 !important;
+                border: 1px solid var(--neon-blue); /* Bordure visible pour le contraste */
+            }
+
+            /* 3. Réduire les textes énormes */
+            .landing-title {
+                font-size: 2rem !important; /* Plus petit */
+                letter-spacing: 2px !important;
+            }
+            
+            .landing-desc {
+                font-size: 0.9rem !important;
+                margin-bottom: 20px !important;
+            }
+
+            /* 4. CACHER la grille de fonctionnalités sur mobile pour gagner de la place */
+            /* C'est souvent ça qui pousse le bouton hors de l'écran */
+            .features-grid {
+                display: none !important;
+            }
+
+            /* 5. Bouton "Explorer" bien visible et large */
+            .btn-start {
+                width: 100% !important;
+                padding: 15px !important;
+                font-size: 1rem !important;
+                background: var(--neon-blue) !important; /* Bleu forcé pour visibilité */
+                color: #020617 !important;
+                margin-top: 10px !important;
+            }
+            
+            /* Petit texte de version */
+            .landing-content + div {
+                margin-bottom: 20px; /* Espace pour le scroll */
+            }
+        }
     </style>
     
 </head>
@@ -344,8 +398,7 @@
             <div class="landing-subtitle">Système d'Intelligence Territoriale</div>
             
             <p class="landing-desc">
-                Une plateforme d'analyse géospatiale de nouvelle génération combinant données satellitaires ERA5, 
-                statistiques démographiques et modèles agricoles pour le Royaume du Maroc.
+                Une plateforme d’analyse géospatiale qui intègre les données satellitaires ERA5, les statistiques démographiques et les modèles agricoles appliqués au Royaume du Maroc
             </p>
 
             <div class="features-grid">
