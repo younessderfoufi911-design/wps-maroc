@@ -265,33 +265,27 @@
            ================================================================== */
         @media (max-width: 768px) {
             
-  /* --- DANS LE BLOC @media (max-width: 768px) --- */
-        
-        /* 1. LA SIDEBAR DEVIENT UN TIROIR DE 2/3 DE HAUTEUR */
-        #sidebar {
-            width: 100% !important;
-            height: 65vh !important; /* 65% de la hauteur (2/3 approx) */
-            top: auto !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
+            /* 1. LA SIDEBAR DEVIENT UN "TIROIR" (BOTTOM SHEET) */
+            #sidebar {
+                width: 100% !important;
+                height: 85vh !important; /* Prend 85% de la hauteur */
+                top: auto !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                
+                /* Animation du bas vers le haut */
+                transform: translateY(100%) !important;
+                border-right: none !important;
+                border-top: 1px solid var(--neon-blue) !important;
+                border-radius: 25px 25px 0 0 !important;
+                box-shadow: 0 -10px 50px rgba(0,0,0,0.9) !important;
+            }
             
-            transform: translateY(100%) !important;
-            border-right: none !important;
-            border-top: 1px solid var(--neon-blue) !important;
-            border-radius: 25px 25px 0 0 !important;
-            box-shadow: 0 -10px 50px rgba(0,0,0,0.9) !important;
-            z-index: 3000 !important; /* Au dessus de tout */
-        }
-        
-        #sidebar.open {
-            transform: translateY(0) !important;
-        }
+            #sidebar.open {
+                transform: translateY(0) !important;
+            }
 
-        /* On ajuste le contenu pour qu'il scrolle bien */
-        .content {
-            padding-bottom: 80px !important; /* Espace pour pas que le bas soit coupé */
-        }
             /* 2. LE MENU CONTEXTUEL DEVIENT UNE MODALE CENTRÉE */
             /* On utilise !important pour écraser les positions left/top calculées par le JS */
             #ctx-menu {
@@ -662,48 +656,7 @@ const CONFIG = {
         document.getElementById('sb-title').innerText = app.regionName;
         switchTab(tab);
     }
-function launchMode(mode) { // ou lancerMode
-        document.getElementById('ctx-menu').style.display = 'none';
-        
-        // Focus Visuel
-        app.geojson.eachLayer(l => l.setStyle({fillOpacity:0.05, color:'#1e293b'}));
-        app.selectedLayer.setStyle({fillOpacity:0.6, color:'white', weight:3});
-        app.selectedLayer.bringToFront();
-        app.selectedLayer.getElement().classList.add('region-active');
 
-        // --- LOGIQUE DE ZOOM INTELLIGENTE (PC vs MOBILE) ---
-        if (window.innerWidth < 768) {
-            // MOBILE : On laisse de la place en bas pour le panneau (2/3)
-            // On calcule 65% de la hauteur de l'écran
-            const bottomPadding = window.innerHeight * 0.65;
-            
-            app.map.fitBounds(app.selectedLayer.getBounds(), {
-                paddingTopLeft: [20, 20],      // Marge haut/gauche
-                paddingBottomRight: [20, bottomPadding], // Marge bas (énorme) / droite
-                maxZoom: 8, // Empêche de zoomer trop près (votre demande)
-                duration: 1.5
-            });
-        } else {
-            // DESKTOP : Zoom centré classique avec marges
-            app.map.fitBounds(app.selectedLayer.getBounds(), {
-                padding: [200, 200], 
-                duration: 1.5
-            });
-        }
-
-        // Ouvrir Sidebar
-        document.getElementById('sidebar').classList.add('open');
-        document.getElementById('sb-title').innerText = app.regionName;
-        
-        switchTab(mode);
-    }
-
-        // Ouvrir Sidebar
-        document.getElementById('sidebar').classList.add('open');
-        document.getElementById('sb-title').innerText = app.regionName;
-        
-        switchTab(mode);
-    }
     function switchTab(tab) {
         ['climat','agri','stats'].forEach(t => {
             document.getElementById(`btn-${t}`).className = t===tab ? 'tab-btn active' : 'tab-btn';
