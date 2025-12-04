@@ -260,63 +260,50 @@
             transform: scale(1.05); box-shadow: 0 0 50px var(--accent);
             background: var(--accent); color: white;
         }
-        /* =========================================
-           VERSION MOBILE (RESPONSIVE)
-           ========================================= */
-        @media (max-width: 768px) {
-            
-            /* 1. SIDEBAR : Devient un panneau plein écran qui monte */
-            #sidebar {
-                width: 100%;
-                height: 80vh; /* Prend 80% de la hauteur */
-                top: auto; /* Plus attaché en haut */
-                bottom: 0;
-                left: 0;
-                border-right: none;
-                border-top: 1px solid var(--neon-blue);
-                transform: translateY(100%); /* Caché en bas */
-                border-radius: 20px 20px 0 0;
-                box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
-            }
-            
-            #sidebar.open {
-                transform: translateY(0); /* Monte vers le haut */
-            }
-
-            /* 2. MENU CONTEXTUEL (POPUP) : Centré au milieu de l'écran */
-            #ctx-menu {
-                position: fixed !important; /* Fixe par rapport à l'écran */
-                top: 50% !important;
-                left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                width: 80%;
-                max-width: 300px;
-                box-shadow: 0 0 50px rgba(0,0,0,0.9);
-                border: 1px solid var(--neon-blue);
-            }
-
-            /* 3. TOOLTIP SOURIS : Désactivé sur mobile (pas de souris) */
-            .map-tooltip { display: none !important; }
-
-            /* 4. AJUSTEMENTS UI */
-            .header { padding: 15px; }
-            .region-title { font-size: 1rem; }
-            
-            /* Boutons plus gros pour les doigts */
-            .btn-ctrl { width: 50px; height: 50px; }
-            .btn-play { width: 70px; height: 70px; }
-            
-            .content { padding: 15px; }
-            
-            /* Carte en plein écran */
-            #map-container { position: fixed; inset: 0; }
-            
-            /* Stats sur une seule colonne */
-            .stat-grid, .impact-grid, .era5-grid {
-                grid-template-columns: 1fr 1fr; /* 2 colonnes max */
-            }
-            .era5-grid { grid-template-columns: 1fr 1fr 1fr; font-size: 0.8rem; }
+      /* =========================================
+       CORRECTIF MOBILE (A COLLER A LA FIN DU CSS)
+       ========================================= */
+    @media (max-width: 768px) {
+        
+        /* 1. LA SIDEBAR (Panneau principal) */
+        /* On réduit sa hauteur à 45% de l'écran pour laisser la carte visible au-dessus */
+        #sidebar {
+            position: absolute !important;
+            bottom: 0 !important; top: auto !important; left: 0 !important; width: 100% !important;
+            height: 45vh !important; /* Max 45% de hauteur */
+            border-right: none !important;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            border-radius: 25px 25px 0 0;
+            transform: translateY(105%) !important; /* Caché en bas */
+            box-shadow: 0 -5px 30px rgba(0,0,0,0.5);
         }
+        
+        #sidebar.open {
+            transform: translateY(0) !important; /* Visible */
+        }
+
+        /* Ajustement du contenu pour qu'il rentre dans les 45% */
+        .content { padding: 15px !important; }
+        .circular-player { margin: 5px 0 !important; transform: scale(0.8); } /* On réduit la montre */
+        .widget { margin-bottom: 10px !important; padding: 10px !important; }
+
+        /* 2. LE MENU CONTEXTUEL (Popup au clic) */
+        /* On le force au milieu de l'écran sur mobile, facile à toucher */
+        #ctx-menu {
+            position: fixed !important;
+            top: 50% !important; left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 80% !important; max-width: 300px;
+            z-index: 99999 !important;
+            box-shadow: 0 0 100px rgba(0,0,0,0.9) !important;
+        }
+
+        /* 3. CARTE */
+        /* On s'assure que le zoom est accessible */
+        .leaflet-control-zoom {
+            position: absolute; top: 10px; right: 10px;
+        }
+    }
     </style>
     
 </head>
