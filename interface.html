@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WPS Maroc | Intelligence Territoriale</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;600;800&family=Orbitron:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Palette Principale "Deep Space" */
+            --bg-deep: #020617;
+            --bg-panel: rgba(15, 23, 42, 0.95);
+            --bg-widget: rgba(30, 41, 59, 0.4);
+            
+            /* Accents Néon */
+            --accent: #38bdf8;       /* Cyan */
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --danger: #f43f5e;       /* Rose/Rouge */
+            --success: #10b981;      /* Vert */
+            --warning: #fbbf24;      /* Ambre */
+            
+            /* Bordures & Texte */
+            --glass-border: 1px solid rgba(255,255,255,0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            
+            /* Layout */
+            --sidebar-w: 460px;
+        }
+
+        /* --- BASE --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; outline: none; }
+        body { 
+            font-family: 'Outfit', sans-serif; background: var(--bg-deep); color: var(--text-main); 
+            height: 100vh; width: 100vw; overflow: hidden; display: flex;
+        }
+
+        /* Scrollbar custom */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+
+        /* --- MAP CONTAINER --- */
+        #map-container { flex-grow: 1; position: relative; z-index: 1; background: #000; }
+        #map { width: 100%; height: 100%; transition: filter 0.5s; }
+
+        /* --- SIDEBAR (Le Cœur de l'UI) --- */
+        #sidebar {
+            width: var(--sidebar-w);
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            border-right: var(--glass-border);
+            display: flex; flex-direction: column;
+            position: absolute; top: 0; left: 0; bottom: 0;
+            transform: translateX(-100%); transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2000;
+            box-shadow: 20px 0 50px rgba(0,0,0,0.6);
+        }
+        #sidebar.open { transform: translateX(0); }
+
+        /* Header Sidebar */
+        .sidebar-header {
+            padding: 30px;
+            border-bottom: var(--glass-border);
+            background: linear-gradient(90deg, rgba(56,189,248,0.05), transparent);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .region-title {
+            font-family: 'Orbitron', sans-serif; font-size: 1.4rem; letter-spacing: 2px;
+            text-transform: uppercase; color: var(--accent); text-shadow: 0 0 10px var(--accent-glow);
+        }
+        .close-btn {
+            background: rgba(255,255,255,0.05); border: none; color: white; width: 32px; height: 32px;
+            border-radius: 50%; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center;
+        }
+        .close-btn:hover { background: var(--danger); transform: rotate(90deg); }
+
+        /* Navigation Onglets */
+        .tabs-container { padding: 20px 30px 0 30px; display: flex; gap: 15px; border-bottom: var(--glass-border); }
+        .tab-btn {
+            flex: 1; padding: 12px; background: transparent; border: none; color: var(--text-muted);
+            font-weight: 600; letter-spacing: 1px; cursor: pointer; position: relative;
+            transition: 0.3s;
+        }
+        .tab-btn.active { color: white; }
+        .tab-btn.active::after {
+            content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px;
+            background: var(--accent); box-shadow: 0 -2px 10px var(--accent);
+        }
+
+        /* Contenu Sidebar */
+        .sidebar-content { flex: 1; overflow-y: auto; padding: 30px; position: relative; }
+        .view-section { display: none; animation: fadeIn 0.4s ease; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- WIDGETS (Cartes de données) --- */
+        .widget {
+            background: var(--bg-widget); border: var(--glass-border); border-radius: 16px;
+            padding: 20px; margin-bottom: 20px; position: relative; overflow: hidden;
+        }
+        .widget-title {
+            font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted);
+            margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
+        }
+        .widget-title i { color: var(--accent); }
+
+        /* --- LECTEUR TEMPOREL (Montre) --- */
+        .chrono-container { display: flex; justify-content: center; margin: 20px 0; position: relative; }
+        .ring-svg { width: 220px; height: 220px; transform: rotate(-90deg); }
+        .ring-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 6; }
+        .ring-fill {
+            fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round;
+            stroke-dasharray: 628; stroke-dashoffset: 628; /* 2*PI*100 */
+            transition: stroke-dashoffset 0.1s linear, stroke 0.2s;
+            filter: drop-shadow(0 0 8px currentColor);
+        }
+        .chrono-center {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        .chrono-val { font-size: 3.5rem; font-weight: 800; line-height: 1; text-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+        .chrono-label { font-size: 0.9rem; color: var(--text-muted); margin-top: 5px; font-weight: 300; }
+
+        /* Contrôles Lecteur */
+        .controls { display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 20px; }
+        .btn-ctrl {
+            width: 45px; height: 45px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05); color: white; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-ctrl:hover { background: var(--accent); color: #000; box-shadow: 0 0 15px var(--accent-glow); }
+        .btn-play { width: 65px; height: 65px; font-size: 1.5rem; background: white; color: #000; border: none; }
+        .btn-play:hover { transform: scale(1.1); background: white; color: var(--accent); }
+
+        /* Slider Vitesse */
+        .speed-control {
+            background: rgba(0,0,0,0.3); padding: 10px 15px; border-radius: 30px;
+            display: flex; align-items: center; gap: 15px; margin-top: 10px;
+        }
+        .speed-label { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; width: 60px; }
+        input[type=range] {
+            width: 100%; -webkit-appearance: none; background: transparent; cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+            background: var(--accent); margin-top: -6px; box-shadow: 0 0 10px var(--accent);
+        }
+
+        /* --- STATS CLIMAT (ERA5) --- */
+        .era5-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center; }
+        .era5-box { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; }
+        .era5-val { font-weight: 700; font-size: 1.1rem; }
+        .era5-lbl { font-size: 0.7rem; opacity: 0.7; margin-top: 2px; }
+
+        /* --- DEMOGRAPHIE (BARRES) --- */
+        .demo-row { margin-bottom: 15px; opacity: 0; animation: slideIn 0.5s forwards; }
+        .demo-header { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; }
+        .demo-key { text-transform: capitalize; color: var(--text-muted); }
+        .demo-val { font-weight: 700; color: white; }
+        .demo-track { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+        .demo-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #818cf8); width: 0; transition: width 1.5s cubic-bezier(0.22, 1, 0.36, 1); border-radius: 3px; }
+        @keyframes slideIn { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+
+        /* --- POPUP CARTE (Au Clic) --- */
+        #map-menu {
+            position: absolute; z-index: 5000; display: none; flex-direction: column;
+            background: var(--bg-panel); border: 1px solid var(--accent);
+            padding: 8px; border-radius: 12px; min-width: 220px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+            animation: popMenu 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popMenu { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+        
+        .menu-header { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 700; color: var(--accent); font-size: 0.9rem; margin-bottom: 5px; }
+        .menu-item {
+            padding: 10px 12px; border-radius: 8px; cursor: pointer; color: white;
+            display: flex; align-items: center; gap: 10px; font-size: 0.9rem; transition: 0.2s;
+        }
+        .menu-item:hover { background: var(--accent); color: #000; }
+
+        /* --- TOOLTIP FLOTTANT (Info Souris) --- */
+        #tooltip-float {
+            position: absolute; pointer-events: none; z-index: 4000;
+            background: rgba(15, 23, 42, 0.9); border: 1px solid var(--accent);
+            padding: 10px 15px; border-radius: 8px; color: white; font-size: 0.85rem;
+            box-shadow: 0 10px 20px black; opacity: 0; transition: opacity 0.2s;
+            transform: translate(-50%, -120%);
+        }
+        #tooltip-float.visible { opacity: 1; }
+
+        /* --- LOADER --- */
+        #loader {
+            position: fixed; inset: 0; background: #020617; z-index: 9999;
+            display: flex; justify-content: center; align-items: center; flex-direction: column;
+            transition: opacity 0.5s;
+        }
+        .loader-bar { width: 200px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin-top: 20px; }
+        .loader-fill { width: 50%; height: 100%; background: var(--accent); animation: load 1s infinite ease-in-out; }
+        @keyframes load { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
+
+        /* --- STYLES LEAFLET CUSTOM --- */
+        .leaflet-interactive { transition: fill-opacity 0.2s, stroke-width 0.2s; cursor: pointer; }
+        .region-highlight {
+            filter: drop-shadow(0 0 15px rgba(56, 189, 248, 0.6));
+            stroke: white !important; stroke-width: 2px !important; stroke-opacity: 1 !important;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <h2 style="font-weight:300; letter-spacing:4px;">WPS <span style="font-weight:700; color:var(--accent)">MAROC</span></h2>
+        <div class="loader-bar"><div class="loader-fill"></div></div>
+    </div>
+
+    <div id="map-menu">
+        <div class="menu-header" id="menu-title">Région</div>
+        <div class="menu-item" onclick="openSidebar('climat')">
+            <i class="fas fa-meteor"></i> Analyse Climatique (Animé)
+        </div>
+        <div class="menu-item" onclick="openSidebar('stats')">
+            <i class="fas fa-chart-pie"></i> Démographie & Stats
+        </div>
+    </div>
+
+    <div id="tooltip-float">
+        <div style="font-weight:700; color:var(--accent); margin-bottom:4px;">METEO LIVE</div>
+        <div id="tt-content">...</div>
+    </div>
+
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <div class="region-title" id="sb-title">RÉGION</div>
+            <button class="close-btn" onclick="closeSidebar()"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="tabs-container">
+            <button class="tab-btn active" id="btn-climat" onclick="switchTab('climat')">CLIMAT</button>
+            <button class="tab-btn" id="btn-stats" onclick="switchTab('stats')">DÉMOGRAPHIE</button>
+        </div>
+
+        <div class="sidebar-content">
+            
+            <div id="view-climat" class="view-section active">
+                
+                <div class="widget">
+                    <div class="widget-title"><i class="fas fa-temperature-high"></i> Résumé Climatique 2024</div>
+                    <div class="era5-grid">
+                        <div class="era5-box">
+                            <div class="era5-val" style="color:#38bdf8" id="val-min">--°</div>
+                            <div class="era5-lbl">MINIMUM</div>
+                        </div>
+                        <div class="era5-box">
+                            <div class="era5-val" style="color:#fbbf24" id="val-moy">--°</div>
+                            <div class="era5-lbl">MOYENNE</div>
+                        </div>
+                        <div class="era5-box">
+                            <div class="era5-val" style="color:#f43f5e" id="val-max">--°</div>
+                            <div class="era5-lbl">MAXIMUM</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="widget">
+                    <div class="widget-title"><i class="fas fa-clock"></i> Évolution Temporelle</div>
+                    
+                    <div class="chrono-container">
+                        <svg class="ring-svg" viewBox="0 0 200 200">
+                            <circle class="ring-bg" cx="100" cy="100" r="90"></circle>
+                            <circle class="ring-fill" id="ring-fill" cx="100" cy="100" r="90"></circle>
+                        </svg>
+                        <div class="chrono-center">
+                            <div class="chrono-val" id="chrono-val">--°</div>
+                            <div class="chrono-label" id="chrono-date">En attente</div>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <button class="btn-ctrl" onclick="stepAnim(-5)"><i class="fas fa-backward"></i></button>
+                        <button class="btn-ctrl btn-play" id="btn-play" onclick="togglePlay()"><i class="fas fa-play"></i></button>
+                        <button class="btn-ctrl" onclick="stepAnim(5)"><i class="fas fa-forward"></i></button>
+                    </div>
+
+                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                        <input type="date" id="d-start" value="2024-01-01" min="2024-01-01" max="2024-12-31" style="flex:1; background:rgba(255,255,255,0.1); border:none; color:white; padding:8px; border-radius:6px;">
+                        <input type="date" id="d-end" value="2024-12-31" min="2024-01-01" max="2024-12-31" style="flex:1; background:rgba(255,255,255,0.1); border:none; color:white; padding:8px; border-radius:6px;">
+                    </div>
+                    <button onclick="loadEvolution()" style="width:100%; background:var(--accent); border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:700;">METTRE À JOUR PÉRIODE</button>
+
+                    <div class="speed-control">
+                        <span class="speed-label">LENT</span>
+                        <input type="range" id="speed-slider" min="10" max="200" value="50" oninput="updateSpeed(this.value)">
+                        <span class="speed-label" style="text-align:right">RAPIDE</span>
+                    </div>
+                </div>
+
+                <div class="widget">
+                    <div class="widget-title"><i class="fas fa-exclamation-triangle"></i> Impact & Risques</div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                        <span style="color:var(--text-muted)">Niveau de Risque</span>
+                        <strong id="val-risk" style="color:white">--</strong>
+                    </div>
+                    <div style="font-size:0.85rem; line-height:1.5; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
+                        <i class="fas fa-info-circle" style="color:var(--accent); margin-right:5px;"></i>
+                        <span id="val-reco">Analyse en attente...</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="view-stats" class="view-section">
+                <div class="widget">
+                    <div class="widget-title"><i class="fas fa-database"></i> Données Démographiques</div>
+                    <div id="stats-container">
+                        <p style="text-align:center; color:var(--text-muted); margin:20px;">Chargement des données...</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+
+<script>
+    // --- CONFIGURATION ---
+    const CONFIG = {
+        WPS_URL: "http://localhost:8080/wps",
+        // Utilisation du GeoJSON (Plus rapide/fiable pour les attributs)
+        DATA_URL: "http://localhost:8080/data/regions.geojson" 
+    };
+
+    // --- ETAT GLOBAL ---
+    const app = {
+        map: null,
+        layers: null,
+        activeLayer: null,
+        regionName: null,
+        evoData: [],
+        anim: {
+            playing: false,
+            index: 0,
+            timer: null,
+            speed: 100
+        }
+    };
+
+    // --- INITIALISATION ---
+    window.onload = () => {
+        initMap();
+        loadData();
+    };
+
+    function initMap() {
+        app.map = L.map('map', {zoomControl: false, attributionControl: false}).setView([29.0, -5.0], 5);
+        
+        // Fond de carte "Dark Matter" (CartoDB)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {maxZoom: 19}).addTo(app.map);
+        // Labels par dessus
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {zIndex: 1000}).addTo(app.map);
+
+        // Fermeture au clic vide
+        app.map.on('click', () => {
+            document.getElementById('map-menu').style.display = 'none';
+            if(!document.getElementById('sidebar').classList.contains('open')) {
+                resetMapStyle();
+            }
+        });
+
+        // Tooltip Souris
+        app.map.on('mousemove', (e) => {
+            const tt = document.getElementById('tooltip-float');
+            if(app.anim.playing && app.activeLayer) {
+                tt.style.left = e.containerPoint.x + 'px';
+                tt.style.top = e.containerPoint.y + 'px';
+                tt.classList.add('visible');
+            } else {
+                tt.classList.remove('visible');
+            }
+        });
+    }
+
+    async function loadData() {
+        try {
+            const resp = await fetch(CONFIG.DATA_URL);
+            if(!resp.ok) throw new Error("Impossible de charger regions.geojson");
+            const data = await resp.json();
+
+            app.layers = L.geoJSON(data, {
+                style: styleDefault,
+                onEachFeature: onFeature
+            }).addTo(app.map);
+
+            app.map.fitBounds(app.layers.getBounds());
+            document.getElementById('loader').style.opacity = 0;
+            setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+
+        } catch (e) {
+            console.error(e);
+            alert("Erreur chargement: " + e.message + "\nVérifiez que le serveur tourne !");
+        }
+    }
+
+    // --- STYLES & INTERACTIONS ---
+    function styleDefault() { return { fillColor: '#38bdf8', weight: 1, color: '#0ea5e9', fillOpacity: 0.1 }; }
+    function styleDim() { return { fillColor: '#0f172a', weight: 1, color: '#1e293b', fillOpacity: 0.9 }; }
+    function styleActive() { return { fillColor: '#38bdf8', weight: 3, color: '#fff', fillOpacity: 0.6 }; }
+
+    function resetMapStyle() {
+        app.layers.eachLayer(l => {
+            l.getElement()?.classList.remove('region-highlight');
+            app.layers.resetStyle(l);
+        });
+        stopAnim();
+    }
+
+    function onFeature(feature, layer) {
+        layer.on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            const p = feature.properties;
+            app.regionName = p.nom_region || p.NAME_1 || p.ADM1_FR;
+            app.activeLayer = layer;
+
+            // Afficher Menu
+            const menu = document.getElementById('map-menu');
+            const pt = app.map.latLngToContainerPoint(e.latlng);
+            
+            // Correction bords écran
+            let left = pt.x + 20; if(left+240 > window.innerWidth) left = pt.x - 260;
+            let top = pt.y - 50; if(top < 0) top = 10;
+
+            menu.style.display = 'flex';
+            menu.style.left = left + 'px';
+            menu.style.top = top + 'px';
+            document.getElementById('menu-title').innerText = app.regionName;
+        });
+
+        layer.on('mouseover', () => { if(layer!==app.activeLayer) layer.setStyle({fillOpacity: 0.3, weight: 2}); });
+        layer.on('mouseout', () => { if(layer!==app.activeLayer) app.layers.resetStyle(layer); });
+    }
+
+    // --- OUVERTURE SIDEBAR ---
+    function openSidebar(tab) {
+        document.getElementById('map-menu').style.display = 'none';
+        
+        // Focus Visuel
+        app.layers.eachLayer(l => l.setStyle(styleDim()));
+        app.activeLayer.setStyle(styleActive());
+        app.activeLayer.bringToFront();
+        app.activeLayer.getElement()?.classList.add('region-highlight'); // CSS Glow
+        app.map.fitBounds(app.activeLayer.getBounds(), {padding:[200,200], duration:1.5});
+
+        // UI
+        document.getElementById('sidebar').classList.add('open');
+        document.getElementById('sb-title').innerText = app.regionName;
+        switchTab(tab);
+    }
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`btn-${tab}`).classList.add('active');
+        
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+        document.getElementById(`view-${tab}`).classList.add('active');
+
+        if(tab === 'climat') {
+            loadImpact();
+            loadEvolution();
+        }
+        if(tab === 'stats') {
+            stopAnim();
+            loadStats();
+        }
+    }
+
+    // --- LOGIQUE METIER : CLIMAT ---
+    async function loadImpact() {
+        const res = await executeWPS('impact_climatique', {region: app.regionName});
+        if(res.error) return;
+
+        // Remplissage ERA5 Stats
+        const clim = res.donnees_climatiques;
+        document.getElementById('val-moy').innerText = clim.temperature_moyenne_C.toFixed(1) + "°";
+        // Si min/max dispo dans impact, sinon simulation pour démo (le vrai vient de l'évolution)
+        document.getElementById('val-max').innerText = (clim.temperature_max_C || clim.temperature_moyenne_C+15).toFixed(1) + "°";
+        document.getElementById('val-min').innerText = (clim.temperature_min_C || clim.temperature_moyenne_C-10).toFixed(1) + "°";
+
+        // Remplissage Risques
+        const risk = res.analyse_impact.risque_thermique;
+        const rEl = document.getElementById('val-risk');
+        rEl.innerText = risk.niveau;
+        rEl.style.color = risk.couleur === 'rouge' ? '#f43f5e' : risk.couleur === 'orange' ? '#fbbf24' : '#34d399';
+        document.getElementById('val-reco').innerText = res.analyse_impact.recommandations[0];
+    }
+
+    async function loadEvolution() {
+        stopAnim();
+        const start = document.getElementById('d-start').value;
+        const end = document.getElementById('d-end').value;
+        
+        const res = await executeWPS('evolution_temperature', {
+            region: app.regionName,
+            date_debut: start, date_fin: end
+        });
+
+        if(res.evolution && res.evolution.length > 0) {
+            app.evoData = res.evolution;
+            app.anim.index = 0;
+            renderFrame(0);
+            togglePlay(); // Auto-start
+        } else {
+            alert("Aucune donnée temporelle.");
+        }
+    }
+
+    // --- MOTEUR ANIMATION (INTERPOLATION) ---
+    function togglePlay() {
+        app.anim.playing = !app.anim.playing;
+        const icon = app.anim.playing ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+        document.getElementById('btn-play').innerHTML = icon;
+        if(app.anim.playing) animLoop();
+    }
+
+    function stopAnim() {
+        app.anim.playing = false;
+        cancelAnimationFrame(app.anim.timer);
+        document.getElementById('btn-play').innerHTML = '<i class="fas fa-play"></i>';
+        document.getElementById('tooltip-float').classList.remove('visible');
+    }
+
+    function animLoop() {
+        if(!app.anim.playing) return;
+        
+        // Vitesse
+        app.anim.index += 0.5; // Fluidité
+        if(app.anim.index >= app.evoData.length - 1) app.anim.index = 0;
+
+        renderFrame(app.anim.index);
+        
+        // Timer basé sur slider
+        setTimeout(() => {
+            app.anim.timer = requestAnimationFrame(animLoop);
+        }, app.anim.speed);
+    }
+
+    function renderFrame(floatIdx) {
+        const data = app.evoData;
+        if(!data.length) return;
+
+        // Interpolation Linéaire
+        const i1 = Math.floor(floatIdx);
+        const i2 = Math.min(i1 + 1, data.length - 1);
+        const ratio = floatIdx - i1;
+
+        const d1 = data[i1];
+        const d2 = data[i2];
+        const temp = d1.temperature_c + (d2.temperature_c - d1.temperature_c) * ratio;
+
+        // UI Montre
+        const color = getHeatColor(temp);
+        document.getElementById('chrono-val').innerText = Math.round(temp) + "°";
+        document.getElementById('chrono-val').style.color = color;
+        document.getElementById('chrono-date').innerText = d1.date;
+
+        // Cercle SVG
+        const pct = (floatIdx / (data.length - 1)) * 628;
+        const ring = document.getElementById('ring-fill');
+        ring.style.strokeDashoffset = 628 - pct;
+        ring.style.stroke = color;
+
+        // Carte Couleur
+        if(app.activeLayer) {
+            app.activeLayer.setStyle({ fillColor: color, fillOpacity: 0.8 });
+        }
+
+        // Tooltip Live
+        document.getElementById('tt-content').innerHTML = `
+            <div style="text-align:center">
+                <span style="font-size:1.5rem; font-weight:800; color:${color}">${temp.toFixed(1)}°C</span><br>
+                <span style="opacity:0.7; font-size:0.7rem">${d1.date}</span>
+            </div>
+        `;
+    }
+
+    function getHeatColor(t) {
+        if(t < 10) return '#38bdf8'; // Bleu
+        if(t < 25) return '#fbbf24'; // Jaune
+        return '#f43f5e'; // Rouge
+    }
+
+    function updateSpeed(val) {
+        // Slider: 10 (rapide) -> 200 (lent) => Inversion logique pour l'utilisateur
+        // Gauche (10) = Lent (High delay), Droite (200) = Rapide (Low delay)
+        // Correction : On veut Slider Gauche = Lent, Droite = Rapide
+        // Donc : Val 10 -> Delay 200ms, Val 300 -> Delay 10ms
+        app.anim.speed = 310 - val;
+    }
+
+    function stepAnim(delta) {
+        stopAnim();
+        app.anim.index += delta;
+        if(app.anim.index < 0) app.anim.index = 0;
+        if(app.anim.index >= app.evoData.length) app.anim.index = app.evoData.length - 1;
+        renderFrame(app.anim.index);
+    }
+
+    // --- LOGIQUE STATS (Démographie Dynamique) ---
+    async function loadStats() {
+        document.getElementById('stats-container').innerHTML = '<p style="text-align:center; opacity:0.5">Chargement...</p>';
+        
+        const res = await executeWPS('stats_regions', {region: app.regionName});
+        if(res.error) { alert(res.error); return; }
+
+        const container = document.getElementById('stats-container');
+        container.innerHTML = '';
+        
+        const d = res.donnees;
+        // Filtrer uniquement les nombres utiles
+        const keys = Object.keys(d).filter(k => 
+            typeof d[k] === 'number' && 
+            !['ID', 'CODE', 'OBJECTID'].some(x => k.toUpperCase().includes(x))
+        );
+        
+        // Trouver max pour barres relatives
+        const maxVal = Math.max(...keys.map(k => d[k])) || 1;
+
+        keys.forEach((k, i) => {
+            const val = d[k];
+            const pct = (val / maxVal) * 100;
+            const html = `
+                <div class="demo-row" style="animation-delay: ${i * 0.05}s">
+                    <div class="demo-header">
+                        <span class="demo-key">${k.replace(/_/g, ' ')}</span>
+                        <span class="demo-val">${val.toLocaleString()}</span>
+                    </div>
+                    <div class="demo-track">
+                        <div class="demo-fill" style="width:${pct}%"></div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += html;
+        });
+    }
+
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('open');
+        stopAnim();
+        resetMapStyle();
+        app.map.setView([29.0, -5.0], 5);
+    }
+
+    // --- EXECUTEUR WPS (POST XML ROBUSTE) ---
+    async function executeWPS(proc, inputs) {
+        let block = '';
+        for(let [k,v] of Object.entries(inputs)) block += `<wps:Input><ows:Identifier>${k}</ows:Identifier><wps:Data><wps:LiteralData>${v}</wps:LiteralData></wps:Data></wps:Input>`;
+        
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+            <wps:Execute version="1.0.0" service="WPS" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 ../wpsExecute_request.xsd">
+                <ows:Identifier>${proc}</ows:Identifier>
+                <wps:DataInputs>${block}</wps:DataInputs>
+                <wps:ResponseForm><wps:RawDataOutput mimeType="application/json"><ows:Identifier>output</ows:Identifier></wps:RawDataOutput></wps:ResponseForm>
+            </wps:Execute>`;
+
+        const r = await fetch(CONFIG.WPS_URL, {method:'POST', headers:{'Content-Type':'text/xml'}, body:xml});
+        if(!r.ok) throw new Error("Erreur Serveur WPS");
+        return await r.json();
+    }
+</script>
+</body>
+</html>

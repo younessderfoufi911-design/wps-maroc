@@ -1,0 +1,12 @@
+{
+  "type_analyse": "Demographie",
+  "nom_region": "Région de Béni Mellal-Khénifra",
+  "nom_arabe": "جهة بني ملال-خنيفرة",
+  "superficie_calculee": 38957.97,
+  "donnees": {
+    "Marocains": 2524541.0,
+    "Etrangers": 1260.0,
+    "Populatio": 2525801.0,
+    "Menages": 616566.0
+  }
+}

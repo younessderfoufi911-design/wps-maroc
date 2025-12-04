@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WPS Maroc - Dashboard Expert</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-deep: #020617;
+            --panel: rgba(15, 23, 42, 0.98);
+            --accent: #38bdf8;
+            --glass-border: 1px solid rgba(255,255,255,0.15);
+            --text: #f8fafc;
+        }
+
+        body { margin: 0; font-family: 'Outfit', sans-serif; background: var(--bg-deep); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
+
+        /* --- CARTE --- */
+        #map-container { flex-grow: 1; position: relative; background: #000; z-index: 1; }
+        #map { width: 100%; height: 100%; }
+
+        /* EFFET GLOW (LE VRAI) */
+        .leaflet-interactive { transition: all 0.3s ease; }
+        .region-glow {
+            stroke: white !important;
+            stroke-width: 3px !important;
+            stroke-opacity: 1 !important;
+            fill-opacity: 0.8 !important;
+            filter: drop-shadow(0 0 15px rgba(56, 189, 248, 0.8)) !important; /* NEON GLOW */
+            z-index: 1000 !important;
+        }
+        .region-dimmed {
+            fill-opacity: 0.1 !important;
+            stroke: #1e293b !important;
+            stroke-width: 1px !important;
+        }
+
+        /* --- SIDEBAR --- */
+        #sidebar {
+            width: 460px; background: var(--panel); border-right: var(--glass-border);
+            position: absolute; left: 0; top: 0; bottom: 0; z-index: 2000;
+            transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: flex; flex-direction: column; box-shadow: 10px 0 60px rgba(0,0,0,0.8);
+        }
+        #sidebar.open { transform: translateX(0); }
+
+        .header { padding: 20px; border-bottom: var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(56,189,248,0.1), transparent); }
+        .region-title { font-weight: 800; font-size: 1.4rem; letter-spacing: 1px; color: var(--accent); text-transform: uppercase; }
+        .close-btn { cursor: pointer; font-size: 1.2rem; transition: 0.2s; }
+        .close-btn:hover { color: #f43f5e; }
+
+        .tabs { display: flex; border-bottom: var(--glass-border); }
+        .tab { flex: 1; padding: 15px; background: transparent; border: none; color: #94a3b8; font-weight: 700; cursor: pointer; transition: 0.3s; }
+        .tab.active { color: white; border-bottom: 2px solid var(--accent); background: rgba(56,189,248,0.05); }
+
+        .content { padding: 25px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 20px; }
+
+        /* --- SÉLECTEUR DE DATES (RESTAURÉ) --- */
+        .date-widget {
+            background: rgba(255,255,255,0.05); border: var(--glass-border); padding: 15px; border-radius: 12px;
+        }
+        .date-row { display: flex; gap: 10px; margin-top: 8px; }
+        .date-input {
+            flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2);
+            color: white; padding: 8px; border-radius: 6px; font-family: inherit;
+        }
+        .btn-update {
+            width: 100%; margin-top: 10px; background: var(--accent); color: #020617; border: none;
+            padding: 8px; border-radius: 6px; font-weight: 700; cursor: pointer; transition: 0.2s;
+        }
+        .btn-update:hover { filter: brightness(1.2); }
+
+        /* --- CERCLE APPLE WATCH --- */
+        .ring-wrapper { display: flex; justify-content: center; position: relative; margin: 20px 0; }
+        .ring-svg { transform: rotate(-90deg); width: 200px; height: 200px; }
+        .ring-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 10; }
+        .ring-progress { 
+            fill: none; stroke-width: 10; stroke-linecap: round; 
+            stroke-dasharray: 565; stroke-dashoffset: 565; /* 2*PI*90 */
+            transition: stroke-dashoffset 0.1s linear, stroke 0.2s ease;
+        }
+        .ring-content {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;
+        }
+        .ring-temp { font-size: 3rem; font-weight: 800; line-height: 1; transition: color 0.2s; }
+        .ring-date { font-size: 0.9rem; color: #94a3b8; margin-top: 5px; font-weight: 600; }
+
+        /* --- CONTROLS & VITESSE --- */
+        .controls { display: flex; justify-content: center; gap: 20px; align-items: center; margin-bottom: 20px; }
+        .btn-ctrl { background: rgba(255,255,255,0.1); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .btn-ctrl:hover { background: var(--accent); color: #020617; }
+        .btn-play { width: 60px; height: 60px; background: white; color: #020617; font-size: 1.5rem; }
+
+        .speed-box { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.3); padding: 8px 15px; border-radius: 20px; }
+        input[type=range] { flex: 1; accent-color: var(--accent); }
+
+        /* --- WIDGETS --- */
+        .widget { background: rgba(255,255,255,0.03); border: var(--glass-border); padding: 15px; border-radius: 12px; }
+        .widget-title { font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat-item { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; text-align: center; }
+        .stat-val { font-size: 1.2rem; font-weight: 700; color: white; }
+        .stat-label { font-size: 0.7rem; color: #64748b; margin-top: 2px; }
+
+        /* --- TOOLTIP CARTE --- */
+        .map-tooltip {
+            position: absolute; pointer-events: none; background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--accent); padding: 10px 15px; border-radius: 8px;
+            color: white; font-size: 0.85rem; z-index: 4000; opacity: 0; transition: opacity 0.2s;
+            box-shadow: 0 10px 30px black; transform: translate(-50%, -120%); margin-top: -15px;
+        }
+        .map-tooltip.visible { opacity: 1; }
+
+        /* Loader */
+        #loader { position: fixed; inset: 0; background: #020617; z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; transition: opacity 0.5s; }
+        .spinner { width: 50px; height: 50px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="loader"><div class="spinner"></div><p style="margin-top:20px; font-weight:300; letter-spacing:2px;">WPS MAROC SYSTEM</p></div>
+
+    <div id="map-tooltip" class="map-tooltip">
+        <div style="font-weight:700; color:var(--accent); margin-bottom:5px;">METEO LIVE</div>
+        <div id="tt-content">--</div>
+    </div>
+
+    <div id="sidebar">
+        <div class="header">
+            <div class="region-title" id="sb-title">RÉGION</div>
+            <div class="close-btn" onclick="closeSidebar()"><i class="fas fa-times"></i></div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" id="btn-climat" onclick="switchTab('climat')">CLIMAT</button>
+            <button class="tab" id="btn-agri" onclick="switchTab('agri')">AGRICULTURE</button>
+            <button class="tab" id="btn-stats" onclick="switchTab('stats')">DÉMOGRAPHIE</button>
+        </div>
+
+        <div class="content">
+            
+            <div id="view-climat">
+                
+                <div class="date-widget">
+                    <div class="widget-title"><i class="fas fa-calendar-alt"></i> Période d'Analyse</div>
+                    <div class="date-row">
+                        <input type="date" id="d-start" class="date-input" value="2024-01-01" min="2024-01-01" max="2024-12-31">
+                        <input type="date" id="d-end" class="date-input" value="2024-12-31" min="2024-01-01" max="2024-12-31">
+                    </div>
+                    <button class="btn-update" onclick="reloadEvolution()">METTRE À JOUR & RELANCER</button>
+                </div>
+
+                <div class="ring-wrapper">
+                    <div class="ring-container">
+                        <svg class="ring-svg">
+                            <circle class="ring-bg" cx="100" cy="100" r="90"></circle>
+                            <circle class="ring-progress" id="ring-prog" cx="100" cy="100" r="90"></circle>
+                        </svg>
+                        <div class="ring-content">
+                            <div class="ring-temp" id="ring-temp">--°</div>
+                            <div class="ring-date" id="ring-date">Date</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn-ctrl" onclick="stepFrame(-10)"><i class="fas fa-backward"></i></button>
+                    <button class="btn-ctrl btn-play" id="btn-play" onclick="togglePlay()"><i class="fas fa-play"></i></button>
+                    <button class="btn-ctrl" onclick="stepFrame(10)"><i class="fas fa-forward"></i></button>
+                </div>
+
+                <div class="speed-box">
+                    <i class="fas fa-walking" style="color:#94a3b8"></i>
+                    <input type="range" id="speed-slider" min="10" max="300" value="150" oninput="updateSpeed(this.value)">
+                    <i class="fas fa-bolt" style="color:var(--accent)"></i>
+                </div>
+
+                <div class="widget" style="margin-top:20px;">
+                    <div class="widget-title"><i class="fas fa-chart-line"></i> Bilan Période</div>
+                    <div class="stat-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+                        <div class="stat-item"><div class="stat-val" style="color:#38bdf8" id="c-min">--</div><div class="stat-label">Min</div></div>
+                        <div class="stat-item"><div class="stat-val" style="color:#fbbf24" id="c-moy">--</div><div class="stat-label">Moy</div></div>
+                        <div class="stat-item"><div class="stat-val" style="color:#f43f5e" id="c-max">--</div><div class="stat-label">Max</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-agri" style="display:none;">
+                <div class="widget">
+                    <div class="widget-title"><i class="fas fa-seedling"></i> Données Agricoles</div>
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <div class="stat-val" id="ag-surf">--</div>
+                            <div class="stat-label">Surface (km²)</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-val" style="color:#34d399" id="ag-pct">--%</div>
+                            <div class="stat-label">Occupation</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:15px; font-size:0.9rem; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
+                        <span style="color:#94a3b8">CULTURES :</span> <span id="ag-crops">...</span>
+                    </div>
+                </div>
+
+                <div class="widget">
+                    <div class="widget-title"><i class="fas fa-exclamation-triangle"></i> Impact & Risques</div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                        <span style="color:#94a3b8">Niveau de Risque</span>
+                        <strong id="ag-risk" style="color:white">--</strong>
+                    </div>
+                    <div style="font-size:0.85rem; line-height:1.5; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
+                        <i class="fas fa-lightbulb" style="color:var(--accent); margin-right:5px;"></i>
+                        <span id="ag-reco">...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-stats" style="display:none;">
+                <div class="widget">
+                    <div class="widget-title"><i class="fas fa-database"></i> Données Shapefile</div>
+                    <div id="demo-container">...</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="map-container"><div id="map"></div></div>
+
+<script>
+    // --- CONFIG ---
+    const WPS_URL = "http://localhost:8080/wps";
+    const SHP_URL = "http://localhost:8080/data/regions.zip";
+
+    // --- ETAT ---
+    let map, geojsonLayer, selectedLayer, selectedRegionName, mapTooltip;
+    let evoData = [], isPlaying = false, animIndex = 0, animSpeed = 80, animTimer;
+
+    // --- INIT ---
+    window.onload = () => { initMap(); loadData(); };
+
+    function initMap() {
+        map = L.map('map', {zoomControl:false, attributionControl:false}).setView([29.0, -5.0], 5);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png').addTo(map);
+        
+        map.on('click', () => {
+            if(!document.getElementById('sidebar').classList.contains('open')) resetMap();
+        });
+
+        // Tooltip Souris
+        mapTooltip = document.getElementById('map-tooltip');
+        document.addEventListener('mousemove', (e) => {
+            if(isPlaying && selectedLayer) {
+                mapTooltip.style.left = e.pageX + 'px';
+                mapTooltip.style.top = e.pageY + 'px';
+                mapTooltip.classList.add('visible');
+            } else {
+                mapTooltip.classList.remove('visible');
+            }
+        });
+    }
+
+    async function loadData() {
+        try {
+            const geojson = await shp(SHP_URL);
+            geojsonLayer = L.geoJSON(geojson, {
+                style: styleDefault,
+                onEachFeature: setupInteractions
+            }).addTo(map);
+            map.fitBounds(geojsonLayer.getBounds());
+            document.getElementById('loader').style.display='none';
+        } catch(e) { alert("Erreur ZIP"); document.getElementById('loader').style.display='none'; }
+    }
+
+    // --- STYLES & INTERACTION ---
+    function styleDefault() { return { fillColor:'#38bdf8', color:'#0ea5e9', weight:1, fillOpacity:0.1 }; }
+    function styleDim() { return { fillColor:'#020617', color:'#1e293b', weight:1, fillOpacity:0.9 }; }
+    
+    function setupInteractions(feature, layer) {
+        layer.on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            
+            // RESET AUTOMATIQUE AU CHANGEMENT DE RÉGION
+            if(selectedLayer && selectedLayer !== layer) {
+                stopAnim();
+                geojsonLayer.resetStyle();
+            }
+
+            const p = feature.properties;
+            selectedRegionName = p.nom_region || p.NAME_1 || p.ADM1_FR;
+            selectedLayer = layer;
+
+            launchAnalysis();
+        });
+
+        layer.on('mouseover', () => { if(layer!==selectedLayer) layer.setStyle({fillOpacity:0.3, weight:2}); });
+        layer.on('mouseout', () => { if(layer!==selectedLayer) geojsonLayer.resetStyle(layer); });
+    }
+
+    // --- ANALYSE ---
+    function launchAnalysis() {
+        // Visuel Focus
+        geojsonLayer.eachLayer(l => l.setStyle(styleDim()));
+        selectedLayer.setStyle({fillOpacity:0.6, color:'white', weight:3});
+        selectedLayer.bringToFront();
+        selectedLayer.getElement().classList.add('region-glow');
+        map.fitBounds(selectedLayer.getBounds(), {padding:[200,200], duration:1.5});
+
+        // Ouvrir Sidebar
+        document.getElementById('sidebar').classList.add('open');
+        document.getElementById('sb-title').innerText = selectedRegionName;
+        switchTab('climat'); // Par défaut
+    }
+
+    function switchTab(tab) {
+        // Gestion UI
+        ['climat','agri','stats'].forEach(t => {
+            document.getElementById(`btn-${t}`).className = t===tab ? 'tab active' : 'tab';
+            document.getElementById(`view-${t}`).style.display = t===tab ? 'block' : 'none';
+        });
+
+        if(tab==='climat') loadClimat(); // Charge Climat + Evo
+        if(tab==='agri') loadAgri();     // Charge Impact Agri
+        if(tab==='stats') { stopAnim(); loadStats(); }
+    }
+
+    // --- LOGIQUE CLIMAT & ANIMATION ---
+    async function loadClimat() {
+        stopAnim();
+        // On lance l'évolution
+        reloadEvolution();
+    }
+
+    async function reloadEvolution() {
+        stopAnim();
+        const start = document.getElementById('d-start').value;
+        const end = document.getElementById('d-end').value;
+        
+        try {
+            const evo = await executeWPS('evolution_temperature', {
+                region: selectedRegionName, date_debut: start, date_fin: end
+            });
+
+            if(evo.evolution && evo.evolution.length > 0) {
+                evoData = evo.evolution;
+                
+                // Stats Min/Max/Moy de la période
+                document.getElementById('c-moy').innerText = evo.statistiques.moyenne + "°";
+                document.getElementById('c-min').innerText = evo.statistiques.min + "°";
+                document.getElementById('c-max').innerText = evo.statistiques.max + "°";
+
+                animIndex = 0;
+                renderFrame(0);
+                playAnim(); // Auto-Start
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    // --- MOTEUR ANIMATION ---
+    function playAnim() {
+        if(isPlaying) return;
+        isPlaying = true;
+        document.getElementById('btn-play').innerHTML = '<i class="fas fa-pause"></i>';
+        loop();
+    }
+
+    function stopAnim() {
+        isPlaying = false;
+        clearTimeout(animTimer);
+        document.getElementById('btn-play').innerHTML = '<i class="fas fa-play"></i>';
+        mapTooltip.classList.remove('visible');
+    }
+
+    function loop() {
+        if(!isPlaying) return;
+        animIndex += 0.5; // Fluidité
+        if(animIndex >= evoData.length-1) animIndex = 0;
+        renderFrame(animIndex);
+        animTimer = setTimeout(loop, animSpeed);
+    }
+
+    function renderFrame(idx) {
+        if(!evoData.length) return;
+        
+        const i1 = Math.floor(idx), i2 = Math.min(i1+1, evoData.length-1);
+        const r = idx - i1;
+        const d1 = evoData[i1], d2 = evoData[i2];
+        const temp = d1.temperature_c + (d2.temperature_c - d1.temperature_c)*r;
+
+        // UI
+        const pct = (idx/(evoData.length-1)) * 565;
+        document.getElementById('ring-prog').style.strokeDashoffset = 565 - pct;
+        document.getElementById('ring-temp').innerText = Math.round(temp)+"°";
+        document.getElementById('ring-date').innerText = d1.date;
+        
+        const color = getHeatColor(temp);
+        document.getElementById('ring-prog').style.stroke = color;
+        document.getElementById('ring-temp').style.color = color;
+
+        // Carte & Tooltip
+        if(selectedLayer) selectedLayer.setStyle({fillColor: color, fillOpacity: 0.8});
+        document.getElementById('tt-content').innerHTML = `<span style="font-size:1.5rem; color:${color}">${temp.toFixed(1)}°C</span>`;
+        document.getElementById('tt-content').style.color = color;
+    }
+
+    function getHeatColor(t) {
+        // Gradient Interpolé (Bleu -> Vert -> Jaune -> Orange -> Rouge)
+        if(t<10) return '#38bdf8'; // Bleu
+        if(t<20) return '#34d399'; // Vert
+        if(t<30) return '#fbbf24'; // Jaune
+        if(t<35) return '#fb923c'; // Orange
+        return '#f43f5e'; // Rouge
+    }
+
+    function updateSpeed(val) {
+        // Slider: 10 (Lent) -> 300 (Rapide)
+        // Mais timer: 10ms (Rapide) -> 200ms (Lent)
+        animSpeed = 310 - val;
+    }
+
+    function stepFrame(d) {
+        stopAnim();
+        animIndex+=d; if(animIndex<0)animIndex=0; if(animIndex>=evoData.length)animIndex=evoData.length-1;
+        renderFrame(animIndex);
+    }
+
+    // --- AGRICULTURE ---
+    async function loadAgri() {
+        const res = await executeWPS('impact_climatique', {region: selectedRegionName});
+        if(!res.error) {
+            document.getElementById('ag-surf').innerText = res.donnees_spatiales.superficie_totale_km2.toLocaleString() + " km²";
+            document.getElementById('ag-pct').innerText = res.donnees_agricoles.pourcentage_agricole + "%";
+            document.getElementById('ag-crops').innerText = res.donnees_agricoles.cultures_principales.join(', ');
+            
+            const risk = res.analyse_impact.risque_thermique;
+            const rEl = document.getElementById('ag-risk');
+            rEl.innerText = risk.niveau;
+            rEl.style.color = risk.couleur === 'rouge' ? '#f43f5e' : risk.couleur === 'orange' ? '#fbbf24' : '#34d399';
+            document.getElementById('ag-reco').innerText = res.analyse_impact.recommandations[0];
+        }
+    }
+
+    // --- STATS ---
+    async function loadStats() {
+        document.getElementById('demo-container').innerHTML = "Chargement...";
+        const res = await executeWPS('stats_regions', {region: selectedRegionName});
+        const div = document.getElementById('demo-container');
+        div.innerHTML = "";
+
+        if(res.donnees) {
+            const d = res.donnees;
+            const keys = Object.keys(d).filter(k => typeof d[k]==='number' && !['id','code'].some(s=>k.toLowerCase().includes(s)));
+            const max = Math.max(...keys.map(k=>d[k]));
+
+            keys.forEach(k => {
+                const val = d[k];
+                const pct = (val/max)*100;
+                div.innerHTML += `<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:4px;"><span style="color:#94a3b8;text-transform:capitalize;">${k.replace(/_/g,' ')}</span><span style="font-weight:700">${val.toLocaleString()}</span></div><div style="height:4px;background:rgba(255,255,255,0.1);border-radius:2px;"><div style="height:100%;width:${pct}%;background:var(--accent);border-radius:2px;"></div></div></div>`;
+            });
+        }
+    }
+
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('open');
+        resetMap();
+    }
+
+    function resetMap() {
+        stopAnim();
+        if(selectedLayer) {
+            selectedLayer.getElement()?.classList.remove('region-glow');
+            geojsonLayer.resetStyle(selectedLayer);
+        }
+        selectedLayer = null;
+        map.setView([29.0, -5.0], 5);
+    }
+
+    // --- XML POST ---
+    async function executeWPS(proc, inputs) {
+        let block = '';
+        for(let [k,v] of Object.entries(inputs)) block += `<wps:Input><ows:Identifier>${k}</ows:Identifier><wps:Data><wps:LiteralData>${v}</wps:LiteralData></wps:Data></wps:Input>`;
+        const xml = `<?xml version="1.0" encoding="UTF-8"?><wps:Execute version="1.0.0" service="WPS" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 ../wpsExecute_request.xsd"><ows:Identifier>${proc}</ows:Identifier><wps:DataInputs>${block}</wps:DataInputs><wps:ResponseForm><wps:RawDataOutput mimeType="application/json"><ows:Identifier>output</ows:Identifier></wps:RawDataOutput></wps:ResponseForm></wps:Execute>`;
+        const r = await fetch(WPS_URL, {method:'POST', headers:{'Content-Type':'text/xml'}, body:xml});
+        return await r.json();
+    }
+</script>
+</body>
+</html>

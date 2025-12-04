@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WPS Maroc 2024 - Serveur de Traitement Géospatial</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #c1272d;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .flag { font-size: 1.2em; }
+        .subtitle { color: #006233; font-size: 1.2em; font-weight: 600; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #f0f0f0;
+        }
+
+        .icon { font-size: 2.5em; }
+        .card-title { font-size: 1.3em; color: #333; font-weight: 700; }
+        .card-description { color: #666; margin-bottom: 20px; line-height: 1.6; flex-grow: 1; }
+
+        .form-group { margin-bottom: 15px; }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #444;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: auto;
+        }
+
+        button:hover { transform: scale(1.02); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        button:active { transform: scale(0.98); }
+
+        /* Badges */
+        .badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 0.85em; font-weight: 600; margin-right: 8px; }
+        .badge-spatial { background: #4CAF50; color: white; }
+        .badge-temporal { background: #2196F3; color: white; }
+        .badge-stat { background: #FF9800; color: white; }
+        .badge-inter { background: #9C27B0; color: white; }
+
+        /* Résultats */
+        .result {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            display: none;
+            margin-bottom: 50px;
+        }
+
+        .result.show { display: block; animation: slideIn 0.5s ease; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #f0f0f0;
+        }
+
+        .result-title { font-size: 1.5em; color: #333; font-weight: 700; }
+        
+        .close-btn {
+            background: #ff4757; color: white; border: none; padding: 8px 16px;
+            border-radius: 8px; cursor: pointer; font-weight: 600;
+        }
+
+        .result-content {
+            background: #f8f9fa; padding: 20px; border-radius: 10px;
+            font-family: 'Segoe UI', sans-serif; /* Plus lisible que monospace pour le texte */
+            max-height: 800px; overflow-y: auto;
+        }
+
+        /* Loading Spinner */
+        .loading { text-align: center; padding: 40px; color: #667eea; font-size: 1.2em; }
+        .spinner {
+            border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%;
+            width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Grilles de stats résultats */
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
+        .stat-item { background: white; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .stat-value { font-size: 1.5em; font-weight: 700; color: #667eea; }
+        .stat-label { color: #666; font-size: 0.9em; margin-top: 5px; }
+        
+        /* Liste déroulante stylisée */
+        select option { padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                <span class="flag">🇲🇦</span>
+                Serveur WPS Maroc 2024
+                <span class="flag">🗺️</span>
+            </h1>
+            <p class="subtitle">Plateforme de Traitement Géospatial et Analyse Climatique</p>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📊</span>
+                    <div>
+                        <div class="card-title">Statistiques Régions</div>
+                        <span class="badge badge-spatial">Spatial</span>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Statistiques sur les 12 régions (superficie, densité) ou détails d'une région.
+                </p>
+                <div class="form-group">
+                    <label>Cible</label>
+                    <select id="region_stats">
+                        <option value="">-- TOUT LE MAROC (Global) --</option>
+                        <option value="Région de Tanger-Tétouan-Al Hoceima">Tanger-Tétouan-Al Hoceima</option>
+                        <option value="Région de l'Oriental">L'Oriental</option>
+                        <option value="Région de Fès-Meknès">Fès-Meknès</option>
+                        <option value="Région de Rabat-Salé-Kénitra">Rabat-Salé-Kénitra</option>
+                        <option value="Région de Béni Mellal-Khénifra">Béni Mellal-Khénifra</option>
+                        <option value="Région de Casablanca-Settat">Casablanca-Settat</option>
+                        <option value="Région de Marrakech-Safi">Marrakech-Safi</option>
+                        <option value="Région de Drâa-Tafilalet">Drâa-Tafilalet</option>
+                        <option value="Région de Souss-Massa">Souss-Massa</option>
+                        <option value="Région de Guelmim-Oued Noun">Guelmim-Oued Noun</option>
+                        <option value="Région de Laâyoune-Sakia El Hamra">Laâyoune-Sakia El Hamra</option>
+                        <option value="Région de Dakhla-Oued Ed-Dahab">Dakhla-Oued Ed-Dahab</option>
+                    </select>
+                </div>
+                <button onclick="executeStats()">
+                    Lancer l'analyse
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🌾</span>
+                    <div>
+                        <div class="card-title">Surface Agricole</div>
+                        <span class="badge badge-spatial">Spatial</span>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Calculer la superficie agricole et les cultures principales.
+                </p>
+                <div class="form-group">
+                    <label>Région</label>
+                    <select id="region_surface">
+                        <option value="Région de Casablanca-Settat">Casablanca-Settat</option>
+                        <option value="Région de Tanger-Tétouan-Al Hoceima">Tanger-Tétouan-Al Hoceima</option>
+                        <option value="Région de l'Oriental">L'Oriental</option>
+                        <option value="Région de Fès-Meknès">Fès-Meknès</option>
+                        <option value="Région de Rabat-Salé-Kénitra">Rabat-Salé-Kénitra</option>
+                        <option value="Région de Béni Mellal-Khénifra">Béni Mellal-Khénifra</option>
+                        <option value="Région de Marrakech-Safi">Marrakech-Safi</option>
+                        <option value="Région de Drâa-Tafilalet">Drâa-Tafilalet</option>
+                        <option value="Région de Souss-Massa">Souss-Massa</option>
+                        <option value="Région de Guelmim-Oued Noun">Guelmim-Oued Noun</option>
+                        <option value="Région de Laâyoune-Sakia El Hamra">Laâyoune-Sakia El Hamra</option>
+                        <option value="Région de Dakhla-Oued Ed-Dahab">Dakhla-Oued Ed-Dahab</option>
+                    </select>
+                </div>
+                <button onclick="executeProcess('surface_agricole', {region: document.getElementById('region_surface').value})">
+                    Calculer la surface
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🌡️</span>
+                    <div>
+                        <div class="card-title">Climat ERA5</div>
+                        <span class="badge badge-stat">Statistique</span>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Données climatiques moyennes (Copernicus 2024).
+                </p>
+                <div class="form-group">
+                    <label>Variable</label>
+                    <select id="variable_era5">
+                        <option value="t2m">Température (t2m)</option>
+                        <option value="tp">Précipitations (tp)</option>
+                    </select>
+                </div>
+                <button onclick="executeProcess('moyenne_era5', {variable: document.getElementById('variable_era5').value})">
+                    Analyser le climat
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📈</span>
+                    <div>
+                        <div class="card-title">Évolution Température</div>
+                        <span class="badge badge-temporal">Spatio-temporel</span>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Suivre l'évolution journalière par région.
+                </p>
+               <div class="form-group">
+    <label>Région</label>
+    <select id="region_evolution">
+        <option value="Région de Tanger-Tétouan-Al Hoceima">Tanger-Tétouan-Al Hoceima</option>
+        <option value="Région de l'Oriental">L'Oriental</option>
+        <option value="Région de Fès-Meknès">Fès-Meknès</option>
+        <option value="Région de Rabat-Salé-Kénitra">Rabat-Salé-Kénitra</option>
+        <option value="Région de Béni Mellal-Khénifra">Béni Mellal-Khénifra</option>
+        <option value="Région de Casablanca-Settat">Casablanca-Settat</option>
+        <option value="Région de Marrakech-Safi">Marrakech-Safi</option>
+        <option value="Région de Drâa-Tafilalet">Drâa-Tafilalet</option>
+        <option value="Région de Souss-Massa">Souss-Massa</option>
+        <option value="Région de Guelmim-Oued Noun">Guelmim-Oued Noun</option>
+        <option value="Région de Laâyoune-Sakia El Hamra">Laâyoune-Sakia El Hamra</option>
+        <option value="Région de Dakhla-Oued Ed-Dahab">Dakhla-Oued Ed-Dahab</option>
+    </select>
+</div>
+                <div class="form-group">
+                    <label>Période (Optionnel)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="date" id="date_debut" min="2024-01-01" max="2024-12-31">
+                        <input type="date" id="date_fin" min="2024-01-01" max="2024-12-31">
+                    </div>
+                </div>
+                <button onclick="executeProcessEvolution()">
+                    Analyser l'évolution
+                </button>
+            </div>
+
+            <div class="card" style="grid-column: 1 / -1;"> <div class="card-header">
+                    <span class="icon">🔗</span>
+                    <div>
+                        <div class="card-title">Impact Climatique Agriculture</div>
+                        <span class="badge badge-inter">INTERCONNECTÉ</span>
+                    </div>
+                </div>
+                <p class="card-description">
+                    <strong>Analyse Intégrée :</strong> Combine automatiquement les données spatiales, les surfaces agricoles et le climat ERA5 pour évaluer les risques et fournir des recommandations.
+                </p>
+                <div class="form-group" style="max-width: 500px; margin: 0 auto 20px auto;">
+                    <label>Région à analyser</label>
+                    <select id="region_impact">
+                        <option value="Région de Fès-Meknès">Fès-Meknès (Céréales/Olivier)</option>
+                        <option value="Région de Souss-Massa">Souss-Massa (Agrumes/Primeurs)</option>
+                        <option value="Région de Casablanca-Settat">Casablanca-Settat</option>
+                        <option value="Région de Marrakech-Safi">Marrakech-Safi</option>
+                        <option value="Région de Tanger-Tétouan-Al Hoceima">Tanger-Tétouan-Al Hoceima</option>
+                        <option value="Région de l'Oriental">L'Oriental</option>
+                        <option value="Région de Rabat-Salé-Kénitra">Rabat-Salé-Kénitra</option>
+                        <option value="Région de Béni Mellal-Khénifra">Béni Mellal-Khénifra</option>
+                        <option value="Région de Drâa-Tafilalet">Drâa-Tafilalet</option>
+                        <option value="Région de Guelmim-Oued Noun">Guelmim-Oued Noun</option>
+                        <option value="Région de Laâyoune-Sakia El Hamra">Laâyoune-Sakia El Hamra</option>
+                        <option value="Région de Dakhla-Oued Ed-Dahab">Dakhla-Oued Ed-Dahab</option>
+                    </select>
+                </div>
+                <button onclick="executeProcess('impact_climatique', {region: document.getElementById('region_impact').value})" style="max-width: 500px; margin: 0 auto; display: block;">
+                    🔬 Lancer l'analyse interconnectée
+                </button>
+            </div>
+        </div>
+
+        <div class="result" id="result">
+            <div class="result-header">
+                <div class="result-title">Résultats de l'analyse</div>
+                <button class="close-btn" onclick="closeResult()">Fermer</button>
+            </div>
+            <div class="result-content" id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const WPS_URL = 'http://localhost:8080/wps';
+
+       async function executeProcess(processId, params) {
+            showLoading();
+            
+            // --- CONSTRUCTION DU XML (Correctif Accents & Structure) ---
+            let inputsBlock = '';
+            let hasInputs = false;
+
+            // On génère les entrées
+            for (const [key, value] of Object.entries(params)) {
+                if (value) { 
+                    hasInputs = true;
+                    // IMPORTANT : Pas de encodeURIComponent ici ! 
+                    // Le XML gère les accents nativement.
+                    inputsBlock += `
+                        <wps:Input>
+                            <ows:Identifier>${key}</ows:Identifier>
+                            <wps:Data>
+                                <wps:LiteralData>${value}</wps:LiteralData>
+                            </wps:Data>
+                        </wps:Input>`;
+                }
+            }
+
+            // On n'ajoute la balise DataInputs QUE s'il y a des entrées
+            const dataInputsXML = hasInputs 
+                ? `<wps:DataInputs>${inputsBlock}</wps:DataInputs>` 
+                : '';
+
+            const xmlBody = `<?xml version="1.0" encoding="UTF-8"?>
+                <wps:Execute version="1.0.0" service="WPS" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 ../wpsExecute_request.xsd">
+                    <ows:Identifier>${processId}</ows:Identifier>
+                    ${dataInputsXML}
+                    <wps:ResponseForm>
+                        <wps:RawDataOutput mimeType="application/json">
+                            <ows:Identifier>output</ows:Identifier>
+                        </wps:RawDataOutput>
+                    </wps:ResponseForm>
+                </wps:Execute>`;
+
+            try {
+                console.log("Envoi XML:", xmlBody); // Pour débugger
+
+                const response = await fetch(`${WPS_URL}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/xml; charset=utf-8' // Encodage explicite
+                    },
+                    body: xmlBody
+                });
+
+                // Gestion fine des erreurs
+                if (!response.ok) {
+                    const text = await response.text();
+                    // On essaie de lire l'exception XML renvoyée par PyWPS
+                    let msg = `Erreur HTTP ${response.status}`;
+                    try {
+                        const parser = new DOMParser();
+                        const xmlErr = parser.parseFromString(text, "text/xml");
+                        const exception = xmlErr.querySelector("ExceptionText");
+                        if (exception) msg = exception.textContent;
+                    } catch(e) {}
+                    
+                    throw new Error(msg);
+                }
+                
+                const jsonData = await response.json();
+                displayResult(jsonData, processId);
+
+            } catch (error) {
+                console.error(error);
+                const contentDiv = document.getElementById('resultContent');
+                contentDiv.innerHTML = `
+                    <div style="background: #ffe6e6; padding: 20px; border-radius: 10px; border-left: 5px solid #ff4757;">
+                        <h3 style="color: #ff4757; margin-bottom: 10px;">❌ Erreur</h3>
+                        <p style="color: #333;">${error.message}</p>
+                    </div>
+                `;
+                document.getElementById('result').classList.add('show');
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+        function executeStats() {
+            const region = document.getElementById('region_stats').value;
+            const params = {};
+            if (region) params.region = region;
+            executeProcess('stats_regions', params);
+        }
+
+        function executeProcessEvolution() {
+            const region = document.getElementById('region_evolution').value;
+            const dateDebut = document.getElementById('date_debut').value;
+            const dateFin = document.getElementById('date_fin').value;
+            
+            const params = { region: region };
+            if (dateDebut) params.date_debut = dateDebut;
+            if (dateFin) params.date_fin = dateFin;
+            
+            executeProcess('evolution_temperature', params);
+        }
+
+        function showLoading() {
+            const resultDiv = document.getElementById('result');
+            const contentDiv = document.getElementById('resultContent');
+            contentDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Traitement en cours...</div>';
+            resultDiv.classList.add('show');
+            // Scroll vers le résultat
+            resultDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function displayResult(data, processId) {
+            const contentDiv = document.getElementById('resultContent');
+            
+            if (data.error) {
+                contentDiv.innerHTML = `
+                    <div style="background: #ffe6e6; padding: 20px; border-radius: 10px; border-left: 5px solid #ff4757;">
+                        <h3 style="color: #ff4757; margin-bottom: 10px;">❌ Erreur WPS</h3>
+                        <p style="color: #333;">${data.error}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Affichage spécifique selon le processus
+            switch(processId) {
+                case 'stats_regions':
+                    contentDiv.innerHTML = formatStatsResult(data);
+                    break;
+                case 'surface_agricole':
+                    contentDiv.innerHTML = formatSurfaceResult(data);
+                    break;
+                case 'moyenne_era5':
+                    contentDiv.innerHTML = formatERA5Result(data);
+                    break;
+                case 'evolution_temperature':
+                    contentDiv.innerHTML = formatEvolutionResult(data);
+                    break;
+                case 'impact_climatique':
+                    contentDiv.innerHTML = formatImpactResult(data);
+                    break;
+                default:
+                    contentDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+        }
+
+        // --- FONCTIONS DE FORMATAGE ---
+
+        function formatStatsResult(data) {
+            // Cas : Région Unique
+            if (data.type_analyse === 'Region Unique') {
+                return `
+                    <h3 style="color: #667eea; margin-bottom: 20px;">📊 Statistiques : ${data.nom_region}</h3>
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <div class="stat-value">${data.superficie_km2.toLocaleString()}</div>
+                            <div class="stat-label">Superficie (km²)</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${data.perimetre_km}</div>
+                            <div class="stat-label">Périmètre (km)</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" style="font-size:1.1em">${data.centroid.lat}, ${data.centroid.lon}</div>
+                            <div class="stat-label">Centroïde (Lat, Lon)</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Cas : Global
+            return `
+                <h3 style="color: #667eea; margin-bottom: 20px;">📊 Statistiques Globales Maroc</h3>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">${data.nombre_regions}</div>
+                        <div class="stat-label">Régions</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${data.superficie_totale_Maroc_km2.toLocaleString()}</div>
+                        <div class="stat-label">Superficie Totale (km²)</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${data.superficie_moyenne_region_km2.toLocaleString()}</div>
+                        <div class="stat-label">Moyenne / Région</div>
+                    </div>
+                </div>
+                <div style="margin-top:20px; display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <div style="background:#e8f5e9; padding:15px; border-radius:10px;">
+                        <strong style="color:#2e7d32">Plus Grande :</strong><br>
+                        ${data.plus_grande_region.nom} (${data.plus_grande_region.superficie_km2.toLocaleString()} km²)
+                    </div>
+                    <div style="background:#fff3e0; padding:15px; border-radius:10px;">
+                        <strong style="color:#e65100">Plus Petite :</strong><br>
+                        ${data.plus_petite_region.nom} (${data.plus_petite_region.superficie_km2.toLocaleString()} km²)
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatSurfaceResult(data) {
+            const hasAgri = data.superficie_agricole_km2 !== undefined;
+            return `
+                <h3 style="color: #667eea; margin-bottom: 20px;">🌾 Surface Agricole : ${data.region}</h3>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">${data.superficie_totale_km2.toLocaleString()}</div>
+                        <div class="stat-label">Surface Totale (km²)</div>
+                    </div>
+                    ${hasAgri ? `
+                        <div class="stat-item">
+                            <div class="stat-value" style="color:#4CAF50">${data.superficie_agricole_km2.toLocaleString()}</div>
+                            <div class="stat-label">Agricole (km²)</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" style="color:#FF9800">${data.pourcentage_agricole}%</div>
+                            <div class="stat-label">Part Agricole</div>
+                        </div>
+                    ` : ''}
+                </div>
+                ${hasAgri ? `
+                    <div style="margin-top:20px;">
+                        <h4>🌱 Cultures Principales :</h4>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                            ${data.cultures_principales.map(c => `<span class="badge badge-spatial">${c}</span>`).join('')}
+                        </div>
+                    </div>
+                ` : '<p style="margin-top:20px; color:#666;">Données agricoles spécifiques non disponibles.</p>'}
+            `;
+        }
+
+        function formatERA5Result(data) {
+            const isTemp = data.variable.includes('t2m') || data.description.includes('Temp');
+            return `
+                <h3 style="color: #667eea; margin-bottom: 20px;">${isTemp ? '🌡️' : '💧'} Climat ERA5 : ${data.description}</h3>
+                <div class="stat-grid">
+                    ${isTemp ? `
+                        <div class="stat-item"><div class="stat-value" style="color:#FF9800">${data.statistiques.moyenne_C}°C</div><div class="stat-label">Moyenne</div></div>
+                        <div class="stat-item"><div class="stat-value" style="color:#2196F3">${data.statistiques.minimum_C}°C</div><div class="stat-label">Min</div></div>
+                        <div class="stat-item"><div class="stat-value" style="color:#f44336">${data.statistiques.maximum_C}°C</div><div class="stat-label">Max</div></div>
+                    ` : `
+                        <div class="stat-item"><div class="stat-value" style="color:#2196F3">${data.statistiques.total_annuel_mm}</div><div class="stat-label">Total Annuel (mm)</div></div>
+                        <div class="stat-item"><div class="stat-value">${data.statistiques.moyenne_journaliere_mm}</div><div class="stat-label">Moyenne/Jour (mm)</div></div>
+                    `}
+                </div>
+                <p style="margin-top:15px; color:#666; font-size:0.9em">Période : ${data.periode} | Source : ${data.source}</p>
+            `;
+        }
+
+        function formatEvolutionResult(data) {
+            const html = `
+                <h3 style="color: #667eea; margin-bottom: 20px;">📈 Évolution : ${data.region}</h3>
+                <div style="background:#f0f4c3; padding:15px; border-radius:10px; margin-bottom:20px;">
+                    <strong>Période :</strong> ${data.periode} <br>
+                    <strong>Nb Mesures :</strong> ${data.nombre_mesures}
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-item"><div class="stat-value">${data.statistiques.moyenne}°C</div><div class="stat-label">Moyenne</div></div>
+                    <div class="stat-item"><div class="stat-value" style="color:#2196F3">${data.statistiques.min}°C</div><div class="stat-label">Min</div></div>
+                    <div class="stat-item"><div class="stat-value" style="color:#f44336">${data.statistiques.max}°C</div><div class="stat-label">Max</div></div>
+                </div>
+                <div style="margin-top:20px; max-height:300px; overflow-y:auto; border:1px solid #eee; border-radius:10px;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead style="background:#eee; position:sticky; top:0;">
+                            <tr><th style="padding:10px; text-align:left;">Date</th><th style="padding:10px; text-align:right;">Temp (°C)</th></tr>
+                        </thead>
+                        <tbody>
+                            ${data.evolution.map(row => `
+                                <tr style="border-bottom:1px solid #f9f9f9;">
+                                    <td style="padding:8px;">${row.date}</td>
+                                    <td style="padding:8px; text-align:right; font-weight:bold; color:${row.temperature_c > data.statistiques.moyenne ? '#f44336' : '#2196F3'}">${row.temperature_c}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            return html;
+        }
+
+        function formatImpactResult(data) {
+            const risque = data.analyse_impact.risque_thermique;
+            return `
+                <h3 style="color: #9C27B0; margin-bottom: 20px;">🔬 Analyse Interconnectée : ${data.region}</h3>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+                    <div style="background:#f3e5f5; padding:15px; border-radius:10px;">
+                        <strong style="color:#7B1FA2">Contexte Agricole</strong><br>
+                        Surface : ${data.donnees_agricoles.superficie_agricole_km2.toLocaleString()} km² (${data.donnees_agricoles.pourcentage_agricole}%)<br>
+                        Cultures : ${data.donnees_agricoles.cultures_principales.join(', ')}
+                    </div>
+                    <div style="background:#e3f2fd; padding:15px; border-radius:10px;">
+                        <strong style="color:#1976D2">Contexte Climatique</strong><br>
+                        Temp Moyenne : ${data.donnees_climatiques.temperature_moyenne_C}°C<br>
+                        Précipitations : ${data.donnees_climatiques.precipitations_totales_mm} mm
+                    </div>
+                </div>
+
+                <div class="stat-item" style="border-left: 5px solid ${risque.couleur === 'rouge' ? '#f44336' : risque.couleur === 'orange' ? '#ff9800' : '#4caf50'}; text-align:left;">
+                    <h4 style="margin:0;">Risque Thermique : <span style="color:${risque.couleur === 'rouge' ? '#f44336' : risque.couleur === 'orange' ? '#ff9800' : '#4caf50'}">${risque.niveau}</span></h4>
+                </div>
+
+                <div style="margin-top:20px;">
+                    <h4 style="color:#333;">💡 Recommandations & Alertes :</h4>
+                    <ul style="margin-top:10px; padding-left:20px; line-height:1.6;">
+                        ${data.analyse_impact.alertes.map(a => `<li style="color:#d32f2f">⚠️ ${a}</li>`).join('')}
+                        ${data.analyse_impact.recommandations.map(r => `<li style="color:#2e7d32">✅ ${r}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <p style="margin-top:20px; font-size:0.85em; color:#666; font-style:italic;">
+                    Synthèse : ${data.synthese.impact_global}
+                </p>
+            `;
+        }
+
+        function closeResult() {
+            document.getElementById('result').classList.remove('show');
+        }
+    </script>
+</body>
+</html>

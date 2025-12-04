@@ -1,0 +1,13 @@
+{
+  "region": "Région de Casablanca-Settat",
+  "annee": 2024,
+  "superficie_totale_km2": 28939.24,
+  "superficie_agricole_km2": 11669,
+  "pourcentage_agricole": 60,
+  "cultures_principales": [
+    "Céréales",
+    "Betterave sucrière",
+    "Maraîchage"
+  ],
+  "source": "Ministere Agriculture Maroc 2024"
+}

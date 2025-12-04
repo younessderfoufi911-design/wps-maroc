@@ -1,0 +1,86 @@
+{
+  "Région de Tanger-Tétouan-Al Hoceima": {
+    "superficie_totale_km2": 15570,
+    "superficie_agricole_km2": 6228,
+    "pourcentage_agricole": 40,
+    "cultures_principales": ["Céréales", "Légumineuses", "Arboriculture fruitière"],
+    "production_cereales_tonnes": 450000
+  },
+  "Région de l'Oriental": {
+    "superficie_totale_km2": 82820,
+    "superficie_agricole_km2": 37269,
+    "pourcentage_agricole": 45,
+    "cultures_principales": ["Céréales", "Élevage ovin"],
+    "production_cereales_tonnes": 850000
+  },
+  "Région de Fès-Meknès": {
+    "superficie_totale_km2": 40075,
+    "superficie_agricole_km2": 20839,
+    "pourcentage_agricole": 52,
+    "cultures_principales": ["Olivier", "Céréales", "Viticulture"],
+    "production_cereales_tonnes": 1200000
+  },
+  "Région de Rabat-Salé-Kénitra": {
+    "superficie_totale_km2": 18385,
+    "superficie_agricole_km2": 9192,
+    "pourcentage_agricole": 50,
+    "cultures_principales": ["Agrumes", "Maraîchage", "Céréales"],
+    "production_cereales_tonnes": 650000
+  },
+  "Région de Béni Mellal-Khénifra": {
+    "superficie_totale_km2": 28374,
+    "superficie_agricole_km2": 12328,
+    "pourcentage_agricole": 43,
+    "cultures_principales": ["Olivier", "Céréales", "Élevage"],
+    "production_cereales_tonnes": 920000
+  },
+  "Région de Casablanca-Settat": {
+    "superficie_totale_km2": 19448,
+    "superficie_agricole_km2": 11669,
+    "pourcentage_agricole": 60,
+    "cultures_principales": ["Céréales", "Betterave sucrière", "Maraîchage"],
+    "production_cereales_tonnes": 1800000
+  },
+  "Région de Marrakech-Safi": {
+    "superficie_totale_km2": 39167,
+    "superficie_agricole_km2": 15667,
+    "pourcentage_agricole": 40,
+    "cultures_principales": ["Olivier", "Arganier", "Céréales"],
+    "production_cereales_tonnes": 750000
+  },
+  "Région de Drâa-Tafilalet": {
+    "superficie_totale_km2": 88836,
+    "superficie_agricole_km2": 13325,
+    "pourcentage_agricole": 15,
+    "cultures_principales": ["Palmeraies", "Cultures oasiennes", "Dattes"],
+    "production_cereales_tonnes": 180000
+  },
+  "Région de Souss-Massa": {
+    "superficie_totale_km2": 53789,
+    "superficie_agricole_km2": 16137,
+    "pourcentage_agricole": 30,
+    "cultures_principales": ["Agrumes", "Primeurs", "Arganier"],
+    "production_cereales_tonnes": 280000
+  },
+  "Région de Guelmim-Oued Noun": {
+    "superficie_totale_km2": 46108,
+    "superficie_agricole_km2": 3689,
+    "pourcentage_agricole": 8,
+    "cultures_principales": ["Élevage camelin", "Cultures oasiennes"],
+    "production_cereales_tonnes": 25000
+  },
+  "Région de Laâyoune-Sakia El Hamra": {
+    "superficie_totale_km2": 139480,
+    "superficie_agricole_km2": 4184,
+    "pourcentage_agricole": 3,
+    "cultures_principales": ["Élevage extensif", "Maraîchage sous serre"],
+    "production_cereales_tonnes": 8000
+  },
+  "Région de Dakhla-Oued Ed-Dahab": {
+    "superficie_totale_km2": 50880,
+    "superficie_agricole_km2": 1526,
+    "pourcentage_agricole": 3,
+    "cultures_principales": ["Pêche maritime", "Maraîchage"],
+    "production_cereales_tonnes": 3000
+  }
+}

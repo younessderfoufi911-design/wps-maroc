@@ -1,0 +1,12 @@
+{
+  "variable": "t2m",
+  "description": "Temperature a 2 metres",
+  "periode": "2024",
+  "region": "Maroc",
+  "source": "ERA5 Copernicus",
+  "statistiques": {
+    "moyenne_C": 26.0,
+    "minimum_C": -1.11,
+    "maximum_C": 49.27
+  }
+}
