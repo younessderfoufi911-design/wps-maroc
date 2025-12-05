@@ -22,7 +22,7 @@ processes = [
 app = Flask(__name__)
 wps_service = Service(processes, ['pywps.cfg'])
 
-# 1. PAGE D'ACCUEIL (C'est la nouveauté !)
+# 1. PAGE D'ACCUEIL 
 @app.route('/')
 def home():
     # Envoie le fichier interface.html quand on va sur http://localhost:8080
@@ -33,7 +33,7 @@ def home():
 def wps():
     return wps_service
 
-# 3. Route pour les Données (GeoJSON, etc.)
+# 3. Route pour les Données 
 @app.route('/data/<path:filename>')
 def data_files(filename):
     return send_from_directory('data', filename)
@@ -50,14 +50,3 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
-
-if __name__ == '__main__':
-    # Création dossier outputs si besoin
-    if not os.path.exists('outputs'): os.makedirs('outputs')
-        
-    print("="*60)
-    print("🚀 SERVEUR PRÊT !")
-    print("👉 OUVREZ CETTE ADRESSE : http://localhost:8080")
-    print("="*60)
-    
-    app.run(host='127.0.0.1', port=8080, debug=True)
