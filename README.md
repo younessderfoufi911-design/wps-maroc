@@ -39,17 +39,6 @@ Ce projet vise à fournir aux décideurs territoriaux un outil d'aide à la déc
 * **Frontend :** HTML5, CSS3 (Glassmorphism), Vanilla JS, Leaflet.
 * **Déploiement :** Docker (Debian Bullseye), Render PaaS.
 
----
-
-## 💻 Installation Locale
-
-Pour faire tourner le projet sur votre machine (Mac/Linux/Windows).
-
-### Prérequis
-* Python 3.10+
-* **GDAL** installé sur votre système (C'est le plus important !).
-
-
 ## 📋 Présentation
 
 Ce projet vise à fournir aux décideurs territoriaux un outil d'aide à la décision face au stress hydrique et climatique au Maroc. Il déporte les calculs lourds (analyse de fichiers NetCDF, intersections géométriques) vers un serveur distant, permettant une consultation fluide sur mobile ou tablette.
